@@ -9,21 +9,38 @@
 #include <math.h>
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 #include "Utils.h"
 
 using namespace std;
 
 int main (int argc, char *argv[]) {
+    /*
     if (argc != 3) {
         printf("Usage: %s <port> <data>\n", argv[0]);
         exit(1);
-    }
+    } */
     struct sockaddr_in server_addr, client_addr;
     vector<client> clients;
 
+    FILE *file = fopen (argv[2], "r");
+    int people;
+    fscanf(file, "%d", &people);
+    for (int k = 0; k < people; ++k) {
+        client cl;
+        fscanf(file, "%s %s %d %d %s %lf", cl.nume, cl.prenume, 
+                &(cl.cardID), &(cl.pin), cl.secret_pass, &(cl.sold));
+        clients.push_back(cl);
+    }
+    fclose(file);
+    for (int i = 0; i < clients.size(); ++i)
+        cout << clients[i].pin << endl;
+    // return 0;
+    
     memset((struct sockaddr_in *) &server_addr, 0, sizeof(server_addr));
     int sock_fd_server, socket_udp;
+    fd_set fd_read, fd_server, fd_client;
     
     sock_fd_server = socket(AF_INET, SOCK_STREAM, 0);
     server_addr.sin_port = htons(atoi(argv[1]));
@@ -36,11 +53,16 @@ int main (int argc, char *argv[]) {
 
     int binding = bind (sock_fd_server, (struct sockaddr *) &server_addr, sizeof(server_addr));
     socket_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    
+
     if (binding < 0) {
         fprintf(stderr, "UDP binding failed!\n");
         exit(EXIT_FAILURE);
     }
+    listen(sock_fd_server, 1);
+    FD_ZERO(&fd_read);
+    FD_SET(sock_fd_server, &fd_read);
+    FD_SET(socket_udp, &fd_read);
+    FD_SET(0, &fd_read);
 
     return 0;
 }

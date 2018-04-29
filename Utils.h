@@ -17,6 +17,7 @@
 
 #define MAX_CLIENTS 40
 #define MAX_SIZE 80
+#define MAX_LEN 1024
 
 struct client {
     char nume[MAX_NAME];
@@ -26,6 +27,18 @@ struct client {
     char secret_pass[8];
     double sold;
     bool blocked = false;
+    int s = -1;
+
+    client() {}
+    client(char *_nume, char *_prenume, int id, int _pin, char *secret, double _sold) {
+        strcpy (nume, _nume);
+        strcpy (prenume, _prenume);
+        strcpy (secret_pass, secret);
+        cardID = id;
+        sold = _sold;
+        pin = _pin;
+    }
+
 };
 
 #endif
