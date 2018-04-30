@@ -1,6 +1,8 @@
 #ifndef UTILS
 #define UTILS
 
+#include <vector>
+
 #define NOT_LOGGED_IN -1
 #define SESSION_ON -2
 #define WRONG_PIN -3
@@ -18,6 +20,8 @@
 #define MAX_CLIENTS 40
 #define MAX_SIZE 80
 #define MAX_LEN 1024
+
+using namespace std;
 
 struct client {
     char nume[MAX_NAME];
@@ -40,5 +44,13 @@ struct client {
     }
 
 };
+
+int searchForClient (vector <client> clients, char *pass, int id) {
+    for (int i = 0; i < clients.size(); ++i) {
+        if (id == clients[i].cardID && strcmp(clients[i].secret_pass, pass) == 0)
+            return i;
+    }
+    return -1;
+}
 
 #endif
