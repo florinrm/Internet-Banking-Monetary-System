@@ -14,15 +14,16 @@
 #include "Utils.h"
 
 using namespace std;
-vector<client> clients;
 
 int main (int argc, char *argv[]) {
     
     if (argc != 3) {
-        printf("Usage: %s <port> <data>\n", argv[0]);
-        exit(1);
+        printf("Usage: %s <port> <data_file>\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
     struct sockaddr_in server_addr, client_addr;
+
+    vector<client> clients;
 
     FILE *file = fopen (argv[2], "r");
     int people;
@@ -56,13 +57,14 @@ int main (int argc, char *argv[]) {
         fprintf(stderr, "UDP binding failed!\n");
         exit(EXIT_FAILURE);
     }
+
     listen(sock_fd_server, 1);
     FD_ZERO(&fd_read);
     FD_SET(sock_fd_server, &fd_read);
     FD_SET(socket_udp, &fd_read);
     FD_SET(0, &fd_read);
 
-    char message[MAX_LEN], buffer[MAX_LEN];
+    char message[MAX_LEN], buff[MAX_LEN];
     int arr_fd[MAX_CLIENTS];
     
     int clients_number = 0;
@@ -80,13 +82,15 @@ int main (int argc, char *argv[]) {
                     sscanf(buff, "%s", option);
 
                     if (strcmp ("unlock", option) == 0) {
+                        
                         int id_card;
                         char to_ignore[40], pass[40];
                         sscanf(buff, "%s %d %s", to_ignore, &id_card, pass);
                         int clientIndex = searchForClient(clients, pass, id_card);
+                        char dump[100];
+                        
                         if (clientIndex != -1) {
-                            clients[clientIndex].blocked = false;
-                            char dump[100];
+                            clients[clientIndex].blocked = false;                            
                             strcpy (dump, "UNLOCK> Client deblocat.\n");
                             int to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
                             if (to_send < 0) {
@@ -94,7 +98,6 @@ int main (int argc, char *argv[]) {
                                 exit(69);
                             }
                         } else {
-                            char dump[100];
                             strcpy (dump, "UNLOCK> Deblocare esuata.\n");
                             int to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
                             if (to_send < 0) {
@@ -110,6 +113,36 @@ int main (int argc, char *argv[]) {
                         arr_fd[clients_number++] = sock_fd_client;
                         fflush(stdout);
                     }
+                } else if (i == 0) {
+                    fgets(message, MAX_LEN, stdin);
+                    if (strcmp ("quit\n", message) == 0) {
+                        strcpy (buff, "Shutdown\n");
+                        for (int k = 0; k < clients_number; ++k) {
+                            write(arr_fd[k], buff, strlen(buff));
+                            close(arr_fd[k]);
+                        }
+                        close(sock_fd_server);
+                        exit(69);
+                    }
+                } else if (i > 0) {
+                    int res = read (i, message, MAX_LEN);
+                    if (res == -1)
+                        fprintf(stderr, "Reading error!\n");
+                    else if (res > 0) {
+                        message[res] = '\0';
+                        /* TODO */
+                        char option[40];
+                        sscanf(message, "%s", option);
+                        if (strcmp ("login", option) == 0) {
+
+                        } else if (strcmp ("logout", option) == 0) {
+
+                        } else if (strcmp ("listsold", option) == 0) {
+
+                        } else if (strcmp ("transfer", option) == 0) {
+                            
+                        }
+                     }
                 }
             }
         }

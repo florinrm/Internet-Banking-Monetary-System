@@ -21,10 +21,6 @@ int main(int argc, char *argv[]) {
     char log[50];
     sprintf(log, "client-<%d>.log", clientID);
     FILE *logfile = fopen (log, "w"); // construiesc log-ul de comenzi
-
-    int port = atoi(argv[2]); // portul
-    char ip_server[MAX_SIZE];
-    strcpy(ip_server, argv[1]); // ip-ul server-ului
     
     int reading, len;
     fd_set fd_server, fd_client;
@@ -32,13 +28,13 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in client_addr, server_addr;
     struct hostent *host;
 
-    char message[MAX_SIZE], buf[MAX_SIZE], buffer[1024];
+    char message[MAX_SIZE], buf[MAX_SIZE], buffer[MAX_LEN];
 
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-    host = gethostbyname(ip_server);
+    host = gethostbyname(argv[1]);
 
     client_addr.sin_family = AF_INET;
-    client_addr.sin_port = htons(port);
+    client_addr.sin_port = htons(atoi(argv[2]));
     client_addr.sin_addr = *(struct in_addr *) *host->h_addr_list;
     int udp_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -73,29 +69,29 @@ int main(int argc, char *argv[]) {
                         fclose(logfile);
                         exit(69);
                     }
-                    reading = read(sock_fd, message, MAX_SIZE);
-                    message[reading] = '\0';
+                    reading = read(sock_fd, buf, MAX_SIZE);
+                    buf[reading] = '\0';
                     fprintf(logfile, "%s\n", buf);
                     cout << buf << endl;
                 } else if (i == 0) {
-                    fgets (buf, MAX_SIZE, stdin);
+                    fgets (message, MAX_SIZE, stdin);
                     char option[40];
-                    sscanf(buf, "%s", option);
-                    int to_send = sendto(udp_fd, buf, strlen(buf), 0, 
+                    sscanf(message, "%s", option);
+                    int to_send = sendto(udp_fd, message, strlen(message), 0, 
                         (struct sockaddr *) &client_addr, sizeof(client_addr));
                     if (strcmp ("unlock", option) == 0) {
                         if (to_send < 0) {
                             fprintf(stderr, "Sending failed!\n");
                             return 0;
                         }
-                    } else if (strcmp ("quit\n", buf) == 0) {
+                    } else if (strcmp ("quit\n", message) == 0) {
                         fclose(logfile);
                         close(sock_fd); // inchid socketul
                         exit(69);
                     } else {
-                        sprintf(message, "%s", buf);
-                        write(sock_fd, message, strlen(message));
-                        fprintf(logfile, "%s\n", message);
+                        sprintf(buf, "%s", message);
+                        write(sock_fd, buf, strlen(buf));
+                        fprintf(logfile, "%s\n", buf);
                         
                     }
                 }
