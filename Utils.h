@@ -31,7 +31,8 @@ struct client {
     char secret_pass[8];
     double sold;
     bool blocked = false;
-    int s = -1;
+    int s = -1; // socket
+    int incercari = 0;
 
     client() {}
     client(char *_nume, char *_prenume, int id, int _pin, char *secret, double _sold) {
@@ -53,8 +54,36 @@ int searchForClient (vector <client> clients, char *pass, int id) {
     return -1;
 }
 
-void workWithClient () {
+int searchForClientBySocket (vector <client> clients, int sock) {
+    for (size_t i = 0; i < clients.size(); ++i) {
+        if (sock == clients[i].s)
+            return i;
+    }
+    return -1;
+}
 
+int searchForClientByCard (vector <client> clients, int card) {
+    for (size_t i = 0; i < clients.size(); ++i) {
+        if (card == clients[i].cardID)
+            return i;
+    }
+    return -1;
+}
+
+int searchForClientByPin (vector <client> clients, int acc_pin) {
+    for (size_t i = 0; i < clients.size(); ++i) {
+        if (acc_pin == clients[i].pin)
+            return i;
+    }
+    return -1;
+}
+
+int searchForClientByCardAndSocket (vector <client> clients, int card) {
+    for (size_t i = 0; i < clients.size(); ++i) {
+        if (clients[i].cardID == card && clients[i].s == -1)
+            return i;
+    }
+    return -1;
 }
 
 #endif

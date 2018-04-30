@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
 
     if (connect(sock_fd, (struct sockaddr *) &client_addr, sizeof(client_addr)) < 0) {
-        fprintf(stderr, "Cannot connect!");
+        fprintf(stderr, "Cannot connect!\n");
         fprintf(logfile, "Cannot connect!\n");
         exit(69); // wink wink
     }
