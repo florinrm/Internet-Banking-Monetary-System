@@ -14,6 +14,7 @@
 #include "Utils.h"
 
 using namespace std;
+vector<client> clients;
 
 int main (int argc, char *argv[]) {
     
@@ -22,14 +23,13 @@ int main (int argc, char *argv[]) {
         exit(1);
     }
     struct sockaddr_in server_addr, client_addr;
-    vector<client> clients;
 
     FILE *file = fopen (argv[2], "r");
     int people;
     fscanf(file, "%d", &people);
     for (int k = 0; k < people; ++k) {
         client cl;
-        fscanf(file, "%s %s %d %d %s %f", cl.nume, cl.prenume, 
+        fscanf(file, "%s %s %d %d %s %lf", cl.nume, cl.prenume, 
                 &(cl.cardID), &(cl.pin), cl.secret_pass, &(cl.sold));
         clients.push_back(cl);
     }
@@ -62,7 +62,8 @@ int main (int argc, char *argv[]) {
     FD_SET(socket_udp, &fd_read);
     FD_SET(0, &fd_read);
 
-    char message[MAX_LEN], buffer[MAX_LEN], arr_fd[MAX_CLIENTS];
+    char message[MAX_LEN], buffer[MAX_LEN];
+    int arr_fd[MAX_CLIENTS];
     
     int clients_number = 0;
     for (;;) {
@@ -103,7 +104,12 @@ int main (int argc, char *argv[]) {
                         }
                     }
                 } else if (sock_fd_server == i) {
-                    
+                    if (clients_number < MAX_CLIENTS) {
+                        int sock_fd_client = accept(sock_fd_server, NULL, NULL);
+                        FD_SET(sock_fd_client, &fd_read);
+                        arr_fd[clients_number++] = sock_fd_client;
+                        fflush(stdout);
+                    }
                 }
             }
         }

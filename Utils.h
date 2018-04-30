@@ -46,11 +46,15 @@ struct client {
 };
 
 int searchForClient (vector <client> clients, char *pass, int id) {
-    for (int i = 0; i < clients.size(); ++i) {
+    for (size_t i = 0; i < clients.size(); ++i) {
         if (id == clients[i].cardID && strcmp(clients[i].secret_pass, pass) == 0)
             return i;
     }
     return -1;
+}
+
+void workWithClient () {
+
 }
 
 #endif
