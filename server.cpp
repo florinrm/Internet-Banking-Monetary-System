@@ -36,10 +36,10 @@ int main (int argc, char *argv[]) {
     }
     fclose(file);
     
-    memset((char *) &server_addr, 0, sizeof(server_addr));
+    bzero((char *) &server_addr, sizeof(server_addr));
     int sock_fd_server, socket_udp;
 
-    fd_set fd_read, fd_server, fd_client;
+    fd_set fd_read, fd_server;
     
     sock_fd_server = socket(AF_INET, SOCK_STREAM, 0);
     server_addr.sin_port = htons(atoi(argv[1]));
@@ -47,8 +47,8 @@ int main (int argc, char *argv[]) {
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
     const int val = 1;
-    setsockopt(sock_fd_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(int));
-    setsockopt(socket_udp, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(int));
+    setsockopt(sock_fd_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+    setsockopt(socket_udp, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
     int binding = bind (sock_fd_server, (struct sockaddr *) &server_addr, sizeof(server_addr));
     socket_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -88,6 +88,8 @@ int main (int argc, char *argv[]) {
                         sscanf(buff, "%s %d %s", to_ignore, &id_card, pass);
                         int clientIndex = searchForClient(clients, pass, id_card);
                         char dump[100];
+
+                        printf("%d\n", clientIndex);
                         
                         if (clientIndex != -1) {
                             clients[clientIndex].blocked = false;                            
@@ -132,7 +134,7 @@ int main (int argc, char *argv[]) {
                         
                         message[res] = '\0';
                         /* TODO */
-                        char option[40], buff[50];
+                        char option[40], buff[150];
                         sscanf(message, "%s", option);
                         
                         if (strcmp ("login", option) == 0) {

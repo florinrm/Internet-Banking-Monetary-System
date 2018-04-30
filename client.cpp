@@ -52,10 +52,13 @@ int main(int argc, char *argv[]) {
     FD_SET(0, &fd_client);
 
     for (;;) {
+        
         fd_server = fd_client;
         select(FD_SETSIZE, &fd_server, NULL, NULL, NULL);
         for (int i = 0; i < FD_SETSIZE; ++i) {
+            
             socklen_t size_client = sizeof(client_addr);
+
             if (FD_ISSET(i, &fd_server)) {
                 len = recvfrom (udp_fd, buffer, 1024, 0, 
                     (struct sockaddr*) &server_addr, &size_client);
