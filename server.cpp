@@ -68,7 +68,9 @@ int main (int argc, char *argv[]) {
     int arr_fd[MAX_CLIENTS];
 
     char last_command[50];
-    strcpy(last_command, "    ");
+    strcpy(last_command, "plm");
+    int index1, index2;
+    double suma_transfer;
     
     int clients_number = 0;
     for (;;) {
@@ -169,7 +171,7 @@ int main (int argc, char *argv[]) {
                         char option[40], buff[150];
                         sscanf(message, "%s", option);
                         
-                        if (strcmp ("login", option) == 0) {
+                        if (strcmp ("login", option) == 0 && strcmp(last_command, "transfer") != 0) {
                             
                             int card_no, account_pin;
                             char to_ignore[20];
@@ -221,7 +223,7 @@ int main (int argc, char *argv[]) {
                             clients[client_index].s = i;
                             write(i, buff, strlen(buff));
 
-                        } else if (strcmp ("logout", option) == 0) {
+                        } else if (strcmp ("logout", option) == 0 && strcmp(last_command, "transfer") != 0) {
                             
                             int index = searchForClientBySocket(clients, i);
                             if (index == -1) {
@@ -233,7 +235,7 @@ int main (int argc, char *argv[]) {
                             strcpy(buff, "IBANK> Clientul a fost deconectat\n");
                             write (i, buff, strlen(buff));
 
-                        } else if (strcmp ("listsold", option) == 0) {
+                        } else if (strcmp ("listsold", option) == 0 && strcmp(last_command, "transfer") != 0) {
                             
                             int index = searchForClientBySocket(clients, i);
                             if (index == -1) {
@@ -244,7 +246,7 @@ int main (int argc, char *argv[]) {
                             sprintf(buff, "IBANK> %.2lf\n", clients[index].sold);
                             write (i, buff, strlen(buff));
 
-                        } else if (strcmp ("transfer", option) == 0) {
+                        } else if (strcmp ("transfer", option) == 0 && strcmp(last_command, "transfer") != 0) {
                             
                             char to_ignore[20];
                             int card_no;
@@ -281,31 +283,53 @@ int main (int argc, char *argv[]) {
                                 write (i, buff, strlen(buff));
                                 continue;
                             } else {
-                                sprintf (buff, "Transfer %lf catre %s %s? [y/n]", sum, 
+                                index1 = curr_index;
+                                index2 = index;
+                                suma_transfer = sum;
+                                strcpy(last_command, "transfer");
+                                printf("lambda\n");
+                                sprintf (buff, "IBANK> Transfer %lf catre %s %s? [y/n]\n", sum, 
                                     clients[index].nume, clients[index].prenume);
                                 write (i, buff, strlen(buff));
+                                continue;
+                                 /*
+                                strcpy(last_command, option);
+                                char lel[MAX_LEN];
+                                int muie = read (i, lel, MAX_LEN);
+                                lel[muie] = '\0';
+                                if (muie == -1)
+                                    fprintf(stderr, "Reading error!\n");
+                                else if (muie > 0) {
+                                    if (strcmp ("y\n", lel) == 0) {
+                                        clients[curr_index].sold -= sum;
+                                        clients[index].sold += sum;
+                                        strcpy (buff, "IBANK> Transfer realizat cu succes.\n");
+                                        write (i, buff, strlen(buff));
+                                    } else {
+                                        strcpy(buff, "IBANK> -9: Operatie anulata.\n");
+                                        write (i, buff, strlen(buff));
+                                        continue;
+                                    }
+                                }
+                                continue; */
                             }
                             //fflush(stdout);
-
-                            char lel[MAX_LEN];
-                            res = read (i, lel, MAX_LEN);
-                            lel[res] = '\0';
-                            if (res == -1)
-                                fprintf(stderr, "Reading error!\n");
-                            else if (res > 0) {
-                                if (strcmp ("y\n", lel) == 0) {
-                                    clients[curr_index].sold -= sum;
-                                    clients[index].sold += sum;
-                                    strcpy (buff, "IBANK> Transfer realizat cu succes.\n");
-                                    write (i, buff, strlen(buff));
-                                } else {
-                                    strcpy(buff, "IBANK> -9: Operatie anulata.\n");
-                                    write (i, buff, strlen(buff));
-                                    continue;
-                                }
+                        } else if (strcmp(last_command, "transfer") == 0) {
+                            printf("pula\n");
+                            strcpy(last_command, "no_transfer");
+                            if (strcmp ("y", option) == 0) {
+                                clients[index1].sold -= suma_transfer;
+                                clients[index2].sold += suma_transfer;
+                                strcpy (buff, "IBANK> Transfer realizat cu succes.\n");
+                                write (i, buff, strlen(buff));
+                                //continue;
+                            } else {
+                                strcpy(buff, "IBANK> -9: Operatie anulata.\n");
+                                write (i, buff, strlen(buff));
+                                //continue;
                             }
                         }
-                     }
+                    }
                 }
             }
         }
