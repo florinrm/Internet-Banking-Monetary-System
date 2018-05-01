@@ -61,30 +61,39 @@ int main(int argc, char *argv[]) {
 			socklen_t len_client = sizeof(client_addr);
 
 			if (FD_ISSET(i, &fd_server)) {
-				if(i == udp){
+				if(i == udp) {
+					
 					buf[recvfrom(udp, buf, 1024, 0, (struct sockaddr*) &server_addr, &len_client)] = '\0';
 					cout << buf << endl;
+				
 				} else if (i == sock_fd) {
+				
 					if (strcmp(message, "Shutdown") == 0) {
 						fclose(logfile);
 						close(sock_fd);
 						printf("%s", message);
 						exit(EXIT_SUCCESS);
 					}
+				
 					int result = read(sock_fd, message, MSG_SIZE);
 					message[result] = '\0';
 					fprintf(logfile, "%s", message);
+				
 					printf("%s", message);
+				
 				} else if (i == 0) {
+				
 					fgets(buffer, MSG_SIZE, stdin);
 					char option[30];
 					sscanf(buffer, "%s", option);
+					
 					if(strcmp ("unlock", option) == 0) {
 						int to_send = sendto(udp, buffer, strlen(buffer), 0, (struct sockaddr*) &client_addr, sizeof client_addr);
 						if(to_send < 0) {
 							fprintf(stderr, "Sending failed!\n");
 							exit (EXIT_FAILURE);
 						}
+					
 					}
 					if (strcmp(buffer, "quit\n") == 0) {
 						close(sock_fd);

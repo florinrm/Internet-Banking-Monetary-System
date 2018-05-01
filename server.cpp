@@ -66,15 +66,25 @@ int main (int argc, char *argv[]) {
 
     char message[MAX_LEN], buff[MAX_LEN];
     int arr_fd[MAX_CLIENTS];
+
+    char last_command[50];
+    strcpy(last_command, "    ");
     
     int clients_number = 0;
     for (;;) {
+
         fd_server = fd_read;
         select(FD_SETSIZE, &fd_server, NULL, NULL, NULL);
+
         char buff[100], option[40];
+
         for (int i = 0; i < FD_SETSIZE; ++i) {
+        
             if (FD_ISSET(i, &fd_server)) {
+        
                 if (socket_udp == i) {
+        
+                    printf("muie\n");
                     socklen_t len_client = sizeof(client_addr);
                     int reading = recvfrom(socket_udp, buff, 100, 0, 
                         (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
@@ -82,29 +92,51 @@ int main (int argc, char *argv[]) {
                     sscanf(buff, "%s", option);
 
                     if (strcmp ("unlock", option) == 0) {
-                        
-                        int id_card;
-                        char to_ignore[40], pass[40];
-                        sscanf(buff, "%s %d %s", to_ignore, &id_card, pass);
-                        int clientIndex = searchForClient(clients, pass, id_card);
                         char dump[100];
+                        int id_card, to_send;
+                        char to_ignore[40], pass[40];
+                        sscanf(buff, "%s %d", to_ignore, &id_card);
+                        int clientIndex = searchForClientByCard(clients, id_card);
 
                         printf("%d\n", clientIndex);
+
+                        if (clientIndex == -1) {
+                            strcpy(dump, "UNLOCK> -4: Numar card inexistent.\n");
+                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                (struct sockaddr*) &client_addr, len_client);
+                            if (to_send < 0) {
+                                fprintf(stderr, "Sending failed!\n");
+                                continue;
+                            }
+                        }
+
+                        strcpy (dump, "UNLOCK> Trimite parola secreta.\n");
+                        to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                            (struct sockaddr*) &client_addr, len_client);
+                        if (to_send < 0) {
+                            fprintf(stderr, "Sending failed!\n");
+                            continue;
+                        }
+                        len_client = sizeof(client_addr);
+                        reading = recvfrom(socket_udp, pass, 100, 0, 
+                            (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
+                        pass[reading] = '\0';
+                        clientIndex = searchForClient(clients, pass, id_card);
                         
                         if (clientIndex != -1) {
                             clients[clientIndex].blocked = false;                            
                             strcpy (dump, "UNLOCK> Client deblocat.\n");
-                            int to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
+                            to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
                             if (to_send < 0) {
                                 fprintf(stderr, "Sending failed!\n");
-                                exit(69);
+                                continue;
                             }
                         } else {
                             strcpy (dump, "UNLOCK> Deblocare esuata.\n");
                             int to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
                             if (to_send < 0) {
                                 fprintf(stderr, "Sending failed!\n");
-                                exit(69);
+                                continue;
                             }
                         }
                     }
@@ -202,6 +234,7 @@ int main (int argc, char *argv[]) {
                             write (i, buff, strlen(buff));
 
                         } else if (strcmp ("listsold", option) == 0) {
+                            
                             int index = searchForClientBySocket(clients, i);
                             if (index == -1) {
                                 strcpy(buff, "IBANK> -1: Clientul nu este autentificat.\n");
@@ -212,9 +245,11 @@ int main (int argc, char *argv[]) {
                             write (i, buff, strlen(buff));
 
                         } else if (strcmp ("transfer", option) == 0) {
+                            
                             char to_ignore[20];
                             int card_no;
                             double sum;
+                            printf("muie\n");
                             sscanf(message, "%s %d %lf", to_ignore, &card_no, &sum);
 
                             int curr_index = searchForClientBySocket(clients, i);
@@ -230,6 +265,12 @@ int main (int argc, char *argv[]) {
                                 write (i, buff, strlen(buff));
                                 continue;
                             }
+                            if (clients[curr_index].blocked) {
+                                strcpy(buff, "IBANK> -6: Tranzactie esuata.\n");
+                                write (i, buff, strlen(buff));
+                                continue;
+                            }
+
                             if (sum > clients[curr_index].sold) {
                                 strcpy(buff, "IBANK> -8: Fonduri insuficiente.\n");
                                 write (i, buff, strlen(buff));
@@ -239,17 +280,20 @@ int main (int argc, char *argv[]) {
                                 strcpy(buff, "IBANK> -6: Tranzactie esuata.\n");
                                 write (i, buff, strlen(buff));
                                 continue;
+                            } else {
+                                sprintf (buff, "Transfer %lf catre %s %s? [y/n]", sum, 
+                                    clients[index].nume, clients[index].prenume);
+                                write (i, buff, strlen(buff));
                             }
+                            //fflush(stdout);
 
-                            sprintf (buff, "Transfer %lf catre %s %s? [y/n]", sum, 
-                                clients[index].nume, clients[index].prenume);
-                            write (i, buff, strlen(buff));
-
-                            res = read (i, message, MAX_LEN);
+                            char lel[MAX_LEN];
+                            res = read (i, lel, MAX_LEN);
+                            lel[res] = '\0';
                             if (res == -1)
                                 fprintf(stderr, "Reading error!\n");
                             else if (res > 0) {
-                                if (strcmp ("y", message) == 0) {
+                                if (strcmp ("y\n", lel) == 0) {
                                     clients[curr_index].sold -= sum;
                                     clients[index].sold += sum;
                                     strcpy (buff, "IBANK> Transfer realizat cu succes.\n");
