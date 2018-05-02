@@ -15,13 +15,16 @@
 
 using namespace std;
 
+
+const int val = 1;
 struct sockaddr_in server_addr, client_addr;
 socklen_t len_client = sizeof(client_addr);
 bool wait_for_pass = false;
 vector<client> clients;
 int socket_udp;
 
-void lel1 (char *buffer) {
+
+void checkForUnlock (char *buffer) {
     int card_no;
     char to_ignore[40];
     char dump[100];
@@ -45,7 +48,7 @@ void lel1 (char *buffer) {
         (struct sockaddr*) &client_addr, len_client);
 }
 
-void lel2 (char *buffer) {
+void doUnlock (char *buffer) {
     int card_no;
     char pass[40];
     char dump[100];
@@ -94,7 +97,6 @@ int main (int argc, char *argv[]) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    const int val = 1;
     setsockopt(socket_udp, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
     setsockopt(sock_fd_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
@@ -120,7 +122,7 @@ int main (int argc, char *argv[]) {
     strcpy(last_command, "plm");
     int index1, index2;
     double suma_transfer;
-    int id_client_card = 0;
+    int reading;
     
     int clients_number = 0;
     for (;;) {
@@ -137,9 +139,8 @@ int main (int argc, char *argv[]) {
                 if (socket_udp == i) {
         
                     printf("muie\n");
-                    // socklen_t len_client = sizeof(client_addr);
                     memset(buff, 0, 1500);
-                    int reading = recvfrom(socket_udp, buff, 1500, 0, 
+                    reading = recvfrom(socket_udp, buff, 1500, 0, 
                         (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
                     buff[reading] = '\0';
                     sscanf(buff, "%s", option);
@@ -147,130 +148,14 @@ int main (int argc, char *argv[]) {
                     printf("%s\n", buff);
 
                     if (strcmp (option, "unlock") == 0) {
-                        printf("sugi pula baa\n"); /*
-                        char dump[100];
-                        int id_card, to_send;
-                        char to_ignore[40], pass[40];
-                        sscanf(buff, "%s %d", to_ignore, &id_card);
-                        int clientIndex = searchForClientByCard(clients, id_card);
-
-                        if (clientIndex == -1) {
-                            strcpy(dump, "UNLOCK> -4: Numar card inexistent.\n");
-                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue;
-                            }
+                        printf("sugi pula baa\n");
+                            checkForUnlock(buff);
                             continue;
-                        } else if (clients[clientIndex].blocked == false) {
-                            strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
-                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue;
-                            }
-                            continue;
-                        } else {
-                            id_client_card = clients[clientIndex].cardID;
-                            strcpy (dump, "UNLOCK> Trimite parola secreta.\n");
-                            wait_for_pass = true;
-                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue; 
-                            }
-                            len_client = sizeof(client_addr);
-                            reading = recvfrom(socket_udp, pass, 1500, 0, 
-                                (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
-                            pass[reading] = '\0';
-                            printf("lel: %s\n", pass);
-                             /*
-                            sscanf(buff, "%s", pass);
-                            int index = searchForClient(clients, pass, id_client_card);
-                            if (index == -1) {
-                                strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
-                                to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                    (struct sockaddr*) &client_addr, len_client);
-                                if (to_send < 0) {
-                                    fprintf(stderr, "Sending failed!\n");
-                                    continue;
-                                }
-                                //continue;
-                            } else {
-                                clients[index].blocked = false;
-                                strcpy(dump, "UNLOCK> Card deblocat.\n");
-                                to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                    (struct sockaddr*) &client_addr, len_client);
-                                if (to_send < 0) {
-                                    fprintf(stderr, "Sending failed!\n");
-                                    continue;
-                                }
-                                //continue;
-                            } */
-                            lel1(buff);
-                            continue;
-                        //}
-                        
-                        //continue;
-                        /*
-                        len_client = sizeof(client_addr);
-                        reading = recvfrom(socket_udp, pass, 100, 0, 
-                            (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
-                        pass[reading] = '\0';
-                        clientIndex = searchForClient(clients, pass, id_card);
-                        
-                        if (clientIndex != -1) {
-                            clients[clientIndex].blocked = false;                            
-                            strcpy (dump, "UNLOCK> Client deblocat.\n");
-                            to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue;
-                            }
-                        } else {
-                            strcpy (dump, "UNLOCK> Deblocare esuata.\n");
-                            int to_send = sendto(socket_udp, dump, strlen(dump), 0, (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue;
-                            }
-                        } */
                     } else if (wait_for_pass) {
                         /* TO DO cu parola*/
                         printf("muie viorel\n");
-                        /*
-                        char pass[40];
-                        char dump[100];
-                        int card_no;
-                        int to_send;
-                        sscanf(buff, "%d %s", &card_no, pass);
-                        int index = searchForClient(clients, pass, card_no);
-                        if (index == -1) {
-                            strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
-                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue;
-                            }
-                            //continue;
-                        } else {
-                            clients[index].blocked = false;
-                            strcpy(dump, "UNLOCK> Card deblocat.\n");
-                            wait_for_pass = false;
-                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                                (struct sockaddr*) &client_addr, len_client);
-                            if (to_send < 0) {
-                                fprintf(stderr, "Sending failed!\n");
-                                continue;
-                            }
-                            continue;
-                        } */
                         wait_for_pass = false;
-                        lel2(buff);
+                        doUnlock(buff);
                     }
                 } else if (sock_fd_server == i) {
                     if (clients_number < MAX_CLIENTS) {

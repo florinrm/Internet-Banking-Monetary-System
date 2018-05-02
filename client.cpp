@@ -17,7 +17,7 @@ bool wait_for_pass = false;
 int last_card_user = 0, udp;
 struct sockaddr_in server_addr, client_addr;
 
-void lel1 (char *buffer) {
+void checkForUnlock (char *buffer) {
 	char message[50];
 	sprintf(message, "%s %d", buffer, last_card_user);
 	wait_for_pass = true;
@@ -29,7 +29,7 @@ void lel1 (char *buffer) {
 	}
 }
 
-void lel2 (char *buffer) {
+void doUnlock (char *buffer) {
 	char message[50];
 	wait_for_pass = false;
 	sprintf(message, "%d %s", last_card_user, buffer);
@@ -121,9 +121,9 @@ int main(int argc, char *argv[]) {
 					sscanf(buffer, "%s", option);
 					
 					if(strcmp ("unlock", option) == 0) {
-						lel1(buffer);
+						checkForUnlock(buffer);
 					} else if (wait_for_pass) {
-						lel2(buffer);
+						doUnlock(buffer);
 					}
 
 					if (strcmp(buffer, "quit\n") == 0) {
