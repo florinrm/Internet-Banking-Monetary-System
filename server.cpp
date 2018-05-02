@@ -15,15 +15,63 @@
 
 using namespace std;
 
+struct sockaddr_in server_addr, client_addr;
+socklen_t len_client = sizeof(client_addr);
+bool wait_for_pass = false;
+vector<client> clients;
+int socket_udp;
+
+void lel1 (char *buffer) {
+    int card_no;
+    char to_ignore[40];
+    char dump[100];
+    sscanf(buffer, "%s %d", to_ignore, &card_no);
+    int index = searchForClientByCard(clients, card_no);
+    if (index == -1) {
+        strcpy(dump, "UNLOCK> -4: Numar card inexistent.\n");
+        sendto(socket_udp, dump, strlen(dump), 0, 
+            (struct sockaddr*) &client_addr, len_client);
+        return;
+    }
+    if (clients[index].blocked == false) {
+        strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
+        sendto(socket_udp, dump, strlen(dump), 0, 
+            (struct sockaddr*) &client_addr, len_client);
+        return;
+    }
+    wait_for_pass = true;
+    strcpy (dump, "UNLOCK> Trimite parola secreta.\n");
+    sendto(socket_udp, dump, strlen(dump), 0, 
+        (struct sockaddr*) &client_addr, len_client);
+}
+
+void lel2 (char *buffer) {
+    int card_no;
+    char pass[40];
+    char dump[100];
+    sscanf(buffer, "%d%s", &card_no, pass);
+    int index = searchForClient(clients, pass, card_no);
+    if (index == -1) {
+        strcpy (dump, "UNLOCK> Deblocare esuata.\n");
+        sendto(socket_udp, dump, strlen(dump), 0, 
+            (struct sockaddr*) &client_addr, len_client);
+        return;
+    }
+    clients[index].blocked = false;
+    strcpy(dump, "UNLOCK> Card deblocat.\n");
+    //wait_for_pass = false;
+    sendto(socket_udp, dump, strlen(dump), 0, 
+        (struct sockaddr*) &client_addr, len_client);
+}
+
 int main (int argc, char *argv[]) {
     
     if (argc != 3) {
         printf("Usage: %s <port> <data_file>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    struct sockaddr_in server_addr, client_addr;
+    // struct sockaddr_in server_addr, client_addr;
 
-    vector<client> clients;
 
     FILE *file = fopen (argv[2], "r");
     int people;
@@ -37,7 +85,7 @@ int main (int argc, char *argv[]) {
     fclose(file);
     
     bzero((char *) &server_addr, sizeof(server_addr));
-    int sock_fd_server, socket_udp;
+    int sock_fd_server;// socket_udp;
 
     fd_set fd_read, fd_server;
     
@@ -47,13 +95,13 @@ int main (int argc, char *argv[]) {
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
     const int val = 1;
-    setsockopt(sock_fd_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
     setsockopt(socket_udp, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+    setsockopt(sock_fd_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
     int binding = bind (sock_fd_server, (struct sockaddr *) &server_addr, sizeof(server_addr));
     socket_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-    if (binding < 0) {
+    if (bind (socket_udp, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
         fprintf(stderr, "UDP binding failed!\n");
         exit(EXIT_FAILURE);
     }
@@ -67,10 +115,12 @@ int main (int argc, char *argv[]) {
     char message[MAX_LEN], buff[MAX_LEN];
     int arr_fd[MAX_CLIENTS];
 
+
     char last_command[50];
     strcpy(last_command, "plm");
     int index1, index2;
     double suma_transfer;
+    int id_client_card = 0;
     
     int clients_number = 0;
     for (;;) {
@@ -78,7 +128,7 @@ int main (int argc, char *argv[]) {
         fd_server = fd_read;
         select(FD_SETSIZE, &fd_server, NULL, NULL, NULL);
 
-        char buff[100], option[40];
+        char buff[1500], option[40];
 
         for (int i = 0; i < FD_SETSIZE; ++i) {
         
@@ -87,20 +137,22 @@ int main (int argc, char *argv[]) {
                 if (socket_udp == i) {
         
                     printf("muie\n");
-                    socklen_t len_client = sizeof(client_addr);
-                    int reading = recvfrom(socket_udp, buff, 100, 0, 
+                    // socklen_t len_client = sizeof(client_addr);
+                    memset(buff, 0, 1500);
+                    int reading = recvfrom(socket_udp, buff, 1500, 0, 
                         (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
                     buff[reading] = '\0';
                     sscanf(buff, "%s", option);
 
-                    if (strcmp ("unlock", option) == 0) {
+                    printf("%s\n", buff);
+
+                    if (strcmp (option, "unlock") == 0) {
+                        printf("sugi pula baa\n"); /*
                         char dump[100];
                         int id_card, to_send;
                         char to_ignore[40], pass[40];
                         sscanf(buff, "%s %d", to_ignore, &id_card);
                         int clientIndex = searchForClientByCard(clients, id_card);
-
-                        printf("%d\n", clientIndex);
 
                         if (clientIndex == -1) {
                             strcpy(dump, "UNLOCK> -4: Numar card inexistent.\n");
@@ -110,15 +162,60 @@ int main (int argc, char *argv[]) {
                                 fprintf(stderr, "Sending failed!\n");
                                 continue;
                             }
-                        }
-
-                        strcpy (dump, "UNLOCK> Trimite parola secreta.\n");
-                        to_send = sendto(socket_udp, dump, strlen(dump), 0, 
-                            (struct sockaddr*) &client_addr, len_client);
-                        if (to_send < 0) {
-                            fprintf(stderr, "Sending failed!\n");
                             continue;
-                        }
+                        } else if (clients[clientIndex].blocked == false) {
+                            strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
+                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                (struct sockaddr*) &client_addr, len_client);
+                            if (to_send < 0) {
+                                fprintf(stderr, "Sending failed!\n");
+                                continue;
+                            }
+                            continue;
+                        } else {
+                            id_client_card = clients[clientIndex].cardID;
+                            strcpy (dump, "UNLOCK> Trimite parola secreta.\n");
+                            wait_for_pass = true;
+                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                (struct sockaddr*) &client_addr, len_client);
+                            if (to_send < 0) {
+                                fprintf(stderr, "Sending failed!\n");
+                                continue; 
+                            }
+                            len_client = sizeof(client_addr);
+                            reading = recvfrom(socket_udp, pass, 1500, 0, 
+                                (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
+                            pass[reading] = '\0';
+                            printf("lel: %s\n", pass);
+                             /*
+                            sscanf(buff, "%s", pass);
+                            int index = searchForClient(clients, pass, id_client_card);
+                            if (index == -1) {
+                                strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
+                                to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                    (struct sockaddr*) &client_addr, len_client);
+                                if (to_send < 0) {
+                                    fprintf(stderr, "Sending failed!\n");
+                                    continue;
+                                }
+                                //continue;
+                            } else {
+                                clients[index].blocked = false;
+                                strcpy(dump, "UNLOCK> Card deblocat.\n");
+                                to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                    (struct sockaddr*) &client_addr, len_client);
+                                if (to_send < 0) {
+                                    fprintf(stderr, "Sending failed!\n");
+                                    continue;
+                                }
+                                //continue;
+                            } */
+                            lel1(buff);
+                            continue;
+                        //}
+                        
+                        //continue;
+                        /*
                         len_client = sizeof(client_addr);
                         reading = recvfrom(socket_udp, pass, 100, 0, 
                             (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
@@ -140,7 +237,40 @@ int main (int argc, char *argv[]) {
                                 fprintf(stderr, "Sending failed!\n");
                                 continue;
                             }
-                        }
+                        } */
+                    } else if (wait_for_pass) {
+                        /* TO DO cu parola*/
+                        printf("muie viorel\n");
+                        /*
+                        char pass[40];
+                        char dump[100];
+                        int card_no;
+                        int to_send;
+                        sscanf(buff, "%d %s", &card_no, pass);
+                        int index = searchForClient(clients, pass, card_no);
+                        if (index == -1) {
+                            strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
+                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                (struct sockaddr*) &client_addr, len_client);
+                            if (to_send < 0) {
+                                fprintf(stderr, "Sending failed!\n");
+                                continue;
+                            }
+                            //continue;
+                        } else {
+                            clients[index].blocked = false;
+                            strcpy(dump, "UNLOCK> Card deblocat.\n");
+                            wait_for_pass = false;
+                            to_send = sendto(socket_udp, dump, strlen(dump), 0, 
+                                (struct sockaddr*) &client_addr, len_client);
+                            if (to_send < 0) {
+                                fprintf(stderr, "Sending failed!\n");
+                                continue;
+                            }
+                            continue;
+                        } */
+                        wait_for_pass = false;
+                        lel2(buff);
                     }
                 } else if (sock_fd_server == i) {
                     if (clients_number < MAX_CLIENTS) {
@@ -152,7 +282,7 @@ int main (int argc, char *argv[]) {
                 } else if (i == 0) {
                     fgets(message, MAX_LEN, stdin);
                     if (strcmp ("quit\n", message) == 0) {
-                        strcpy (buff, "Shutdown\n");
+                        strcpy (buff, "IBANK> Inchidere server.\n");
                         for (int k = 0; k < clients_number; ++k) {
                             write(arr_fd[k], buff, strlen(buff));
                             close(arr_fd[k]);
@@ -251,7 +381,6 @@ int main (int argc, char *argv[]) {
                             char to_ignore[20];
                             int card_no;
                             double sum;
-                            printf("muie\n");
                             sscanf(message, "%s %d %lf", to_ignore, &card_no, &sum);
 
                             int curr_index = searchForClientBySocket(clients, i);
@@ -292,41 +421,17 @@ int main (int argc, char *argv[]) {
                                     clients[index].nume, clients[index].prenume);
                                 write (i, buff, strlen(buff));
                                 continue;
-                                 /*
-                                strcpy(last_command, option);
-                                char lel[MAX_LEN];
-                                int muie = read (i, lel, MAX_LEN);
-                                lel[muie] = '\0';
-                                if (muie == -1)
-                                    fprintf(stderr, "Reading error!\n");
-                                else if (muie > 0) {
-                                    if (strcmp ("y\n", lel) == 0) {
-                                        clients[curr_index].sold -= sum;
-                                        clients[index].sold += sum;
-                                        strcpy (buff, "IBANK> Transfer realizat cu succes.\n");
-                                        write (i, buff, strlen(buff));
-                                    } else {
-                                        strcpy(buff, "IBANK> -9: Operatie anulata.\n");
-                                        write (i, buff, strlen(buff));
-                                        continue;
-                                    }
-                                }
-                                continue; */
                             }
-                            //fflush(stdout);
                         } else if (strcmp(last_command, "transfer") == 0) {
-                            printf("pula\n");
                             strcpy(last_command, "no_transfer");
                             if (strcmp ("y", option) == 0) {
                                 clients[index1].sold -= suma_transfer;
                                 clients[index2].sold += suma_transfer;
                                 strcpy (buff, "IBANK> Transfer realizat cu succes.\n");
                                 write (i, buff, strlen(buff));
-                                //continue;
                             } else {
                                 strcpy(buff, "IBANK> -9: Operatie anulata.\n");
                                 write (i, buff, strlen(buff));
-                                //continue;
                             }
                         }
                     }
