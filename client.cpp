@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
 						}
 						sprintf(message, "%s", buffer);
 						write(sock_fd, message, strlen(message));
-						fprintf(logfile, "%s\n", message);
+						fprintf(logfile, "%s", message);
 					}
 				}
 			}
