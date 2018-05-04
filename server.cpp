@@ -23,7 +23,7 @@ bool wait_for_pass = false;
 vector<client> clients;
 int socket_udp;
 
-
+// verificam conditiile pentru deblocare
 void checkForUnlock (char *buffer) {
     int card_no;
     char to_ignore[40];
@@ -31,23 +31,24 @@ void checkForUnlock (char *buffer) {
     sscanf(buffer, "%s %d", to_ignore, &card_no);
     int index = searchForClientByCard(clients, card_no);
     if (index == -1) {
-        strcpy(dump, "UNLOCK> -4: Numar card inexistent.\n");
+        strcpy(dump, "UNLOCK> -4: Numar card inexistent.");
         sendto(socket_udp, dump, strlen(dump), 0, 
             (struct sockaddr*) &client_addr, len_client);
         return;
     }
     if (clients[index].blocked == false) {
-        strcpy(dump, "UNLOCK> -6: Operatie esuata.\n");
+        strcpy(dump, "UNLOCK> -6: Operatie esuata.");
         sendto(socket_udp, dump, strlen(dump), 0, 
             (struct sockaddr*) &client_addr, len_client);
         return;
     }
     wait_for_pass = true;
-    strcpy (dump, "UNLOCK> Trimite parola secreta.\n");
+    strcpy (dump, "UNLOCK> Trimite parola secreta.");
     sendto(socket_udp, dump, strlen(dump), 0, 
         (struct sockaddr*) &client_addr, len_client);
 }
 
+// deblocarea efectiva
 void doUnlock (char *buffer) {
     int card_no;
     char pass[40];
@@ -55,13 +56,13 @@ void doUnlock (char *buffer) {
     sscanf(buffer, "%d%s", &card_no, pass);
     int index = searchForClient(clients, pass, card_no);
     if (index == -1) {
-        strcpy (dump, "UNLOCK> Deblocare esuata.\n");
+        strcpy (dump, "UNLOCK> Deblocare esuata.");
         sendto(socket_udp, dump, strlen(dump), 0, 
             (struct sockaddr*) &client_addr, len_client);
         return;
     }
     clients[index].blocked = false;
-    strcpy(dump, "UNLOCK> Card deblocat.\n");
+    strcpy(dump, "UNLOCK> Card deblocat.");
     //wait_for_pass = false;
     sendto(socket_udp, dump, strlen(dump), 0, 
         (struct sockaddr*) &client_addr, len_client);
@@ -73,8 +74,6 @@ int main (int argc, char *argv[]) {
         printf("Usage: %s <port> <data_file>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    // struct sockaddr_in server_addr, client_addr;
-
 
     FILE *file = fopen (argv[2], "r");
     int people;
@@ -83,12 +82,12 @@ int main (int argc, char *argv[]) {
         client cl;
         fscanf(file, "%s %s %d %d %s %lf", cl.nume, cl.prenume, 
                 &(cl.cardID), &(cl.pin), cl.secret_pass, &(cl.sold));
-        clients.push_back(cl);
+        clients.push_back(cl); // clientii
     }
     fclose(file);
     
     bzero((char *) &server_addr, sizeof(server_addr));
-    int sock_fd_server;// socket_udp;
+    int sock_fd_server;
 
     fd_set fd_read, fd_server;
     
@@ -97,14 +96,14 @@ int main (int argc, char *argv[]) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    setsockopt(socket_udp, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+    setsockopt(socket_udp, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); // UDP
     setsockopt(sock_fd_server, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
 
-    int binding = bind (sock_fd_server, (struct sockaddr *) &server_addr, sizeof(server_addr));
+    bind (sock_fd_server, (struct sockaddr *) &server_addr, sizeof(server_addr));
     socket_udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (bind (socket_udp, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        fprintf(stderr, "UDP binding failed!\n");
+        fprintf(stderr, "UNLOCK> -10: UDP binding failed!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -114,17 +113,18 @@ int main (int argc, char *argv[]) {
     FD_SET(socket_udp, &fd_read);
     FD_SET(0, &fd_read);
 
-    char message[MAX_LEN], buff[MAX_LEN];
+    char message[MAX_LEN];
     int arr_fd[MAX_CLIENTS];
 
 
-    char last_command[50];
-    strcpy(last_command, "plm");
+    char last_command[50]; // ultima comanda - folosesc asta la transfer - manarie
+    // manarie ca sa mearga ca lumea transferul
+    strcpy(last_command, "something");
     int index1, index2;
     double suma_transfer;
     int reading;
     
-    int clients_number = 0;
+    int clients_number = 0; // numarul de client
     for (;;) {
 
         fd_server = fd_read;
@@ -136,28 +136,23 @@ int main (int argc, char *argv[]) {
         
             if (FD_ISSET(i, &fd_server)) {
         
-                if (socket_udp == i) {
+                if (socket_udp == i) { // daca suntem pe UDP
         
-                    printf("muie\n");
                     memset(buff, 0, 1500);
                     reading = recvfrom(socket_udp, buff, 1500, 0, 
                         (struct sockaddr*) &client_addr, (socklen_t *) &len_client);
                     buff[reading] = '\0';
                     sscanf(buff, "%s", option);
 
-                    printf("%s\n", buff);
-
+                    // daca avem unlock
                     if (strcmp (option, "unlock") == 0) {
-                        printf("sugi pula baa\n");
-                            checkForUnlock(buff);
-                            continue;
+                        checkForUnlock(buff);
+                        continue;
                     } else if (wait_for_pass) {
-                        /* TO DO cu parola*/
-                        printf("muie viorel\n");
                         wait_for_pass = false;
                         doUnlock(buff);
                     }
-                } else if (sock_fd_server == i) {
+                } else if (sock_fd_server == i) { // ma ocup de clientii conectati
                     if (clients_number < MAX_CLIENTS) {
                         int sock_fd_client = accept(sock_fd_server, NULL, NULL);
                         FD_SET(sock_fd_client, &fd_read);
@@ -166,6 +161,7 @@ int main (int argc, char *argv[]) {
                     }
                 } else if (i == 0) {
                     fgets(message, MAX_LEN, stdin);
+                    // inchiderea serverului
                     if (strcmp ("quit\n", message) == 0) {
                         strcpy (buff, "IBANK> Inchidere server.\n");
                         for (int k = 0; k < clients_number; ++k) {
@@ -178,14 +174,13 @@ int main (int argc, char *argv[]) {
                 } else if (i > 0) {
                     int res = read (i, message, MAX_LEN);
                     if (res == -1)
-                        fprintf(stderr, "Reading error!\n");
+                        fprintf(stderr, "UNLOCK> -10: Reading error!\n");
                     else if (res > 0) {
                         
                         message[res] = '\0';
-                        /* TODO */
                         char option[40], buff[150];
                         sscanf(message, "%s", option);
-                        
+                        // manarie iarasi sa mearga transferul ca lumea
                         if (strcmp ("login", option) == 0 && strcmp(last_command, "transfer") != 0) {
                             
                             int card_no, account_pin;
@@ -246,7 +241,7 @@ int main (int argc, char *argv[]) {
                                 write (i, buff, strlen(buff));
                                 continue;
                             }
-                            clients[index].s = -1;
+                            clients[index].s = -1; // deconectare
                             strcpy(buff, "IBANK> Clientul a fost deconectat\n");
                             write (i, buff, strlen(buff));
 
@@ -297,12 +292,12 @@ int main (int argc, char *argv[]) {
                                 write (i, buff, strlen(buff));
                                 continue;
                             } else {
+                                // daca conditiile sunt indeplinite -> salvez info
                                 index1 = curr_index;
                                 index2 = index;
                                 suma_transfer = sum;
                                 strcpy(last_command, "transfer");
-                                printf("lambda\n");
-                                sprintf (buff, "IBANK> Transfer %lf catre %s %s? [y/n]\n", sum, 
+                                sprintf (buff, "IBANK> Transfer %lf catre %s %s? [y/n]", sum, 
                                     clients[index].nume, clients[index].prenume);
                                 write (i, buff, strlen(buff));
                                 continue;

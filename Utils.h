@@ -31,7 +31,7 @@ struct client {
     char secret_pass[8];
     double sold;
     bool blocked = false;
-    int s = -1; // socket
+    int s = -1; // daca clientul este activ aka logat
     int incercari = 0;
 
     client() {}
